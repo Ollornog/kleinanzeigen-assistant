@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}{{ t['nav.settings'] }}{% endblock %}
+{% block head %}<h1 class="ka-grow text-xl font-semibold">{{ t['nav.settings'] }}</h1>
+<button class="btn" form="settings-form">{{ t['set.save'] }}</button>{% endblock %}
+{% block body %}
+<form id="settings-form" method="post" action="/settings">
+<div class="tabs" id="set-tabs">
+  <nav role="tablist" data-variant="line">
+    {% for id, key in [('general', 'tab.general'), ('profile', 'tab.profile'), ('templates', 'tab.templates'), ('shipping', 'tab.shipping'), ('ai', 'tab.ai')] %}
+    <button type="button" role="tab" id="tab-{{ id }}" aria-controls="panel-{{ id }}" aria-selected="{{ 'true' if loop.first else 'false' }}" tabindex="{{ 0 if loop.first else -1 }}">{{ t[key] }}</button>
+    {% endfor %}
+  </nav>
+
+  <!-- general: folder, automatic sync, browser, limits -->
+  <div role="tabpanel" id="panel-general" aria-labelledby="tab-general" tabindex="-1" class="ka-stack ka-panel">
+    <div class="card"><header><h2 class="card-title">{{ t['set.folder'] }}</h2><p class="card-description">{{ t['set.folder.hint'] }}</p></header>
+      <section class="ka-bar">
+        <input class="input ka-grow" name="source_dir" value="{{ vm.source_dir }}"{% if not vm.source_ok %} aria-invalid="true"{% endif %}>
+        <a class="btn" data-variant="outline" href="/settings/browse?path={{ vm.source_dir|urlencode }}">{{ t['set.browse'] }}</a>
+      </section></div>
+    <div class="card"><header><h2 class="card-title">{{ t['set.auto'] }}</h2></header><section class="ka-stack">
+      <div class="ka-checks">
+        <label><input class="input" type="checkbox" role="switch" name="a.enabled"{% if vm.auto.enabled %} checked{% endif %}> {{ t['set.auto.on'] }}</label>
+        <label><input class="input" type="checkbox" role="switch" name="a.on_start"{% if vm.auto.on_start %} checked{% endif %}> {{ t['set.auto.start'] }}</label>
+        <label><input class="input" type="checkbox" role="switch" name="a.login_start"{% if vm.login_start %} checked{% endif %}> {{ t['set.auto.login'] }}</label>
+      </div>
+      <div class="ka-grid">
+        <div class="field" role="group"><label>{{ t['set.auto.sync'] }}</label><input class="input" type="number" step="any" name="a.sync_hours" value="{{ ((vm.auto.sync_minutes or 1440) / 60)|round(1)|replace('.0', '') }}"><p>{{ t['set.auto.sync.hint'] }}</p></div>
+        <div class="field" role="group"><label>{{ t['set.auto.inbox'] }}</label><input class="input" type="number" name="a.inbox_minutes" value="{{ vm.auto.inbox_minutes }}"><p>{{ t['set.auto.inbox.hint'] }}</p></div>
+      </div>
+    </section></div>
+    <div class="card"><header><h2 class="card-title">{{ t['set.browser'] }}</h2><p class="card-description">{{ t['set.browser.hint'] }}</p></header><section class="ka-checks">
+      <label><input class="input" type="checkbox" role="switch" name="b.start_minimized"{% if vm.browser.start_minimized %} checked{% endif %}> {{ t['set.browser.min'] }}</label>
+      <label><input class="input" type="checkbox" role="switch" name="b.show_during_actions"{% if vm.browser.show_during_actions %} checked{% endif %}> {{ t['set.browser.show'] }}</label>
+    </section></div>
+    <div class="card"><header><h2 class="card-title">{{ t['set.limits'] }}</h2></header><section class="ka-grid">
+      <div class="field" role="group"><label>{{ t['set.max_publish'] }}</label><input class="input" type="number" name="l.max_publish" value="{{ vm.l.max_publish }}"><p>{{ t['set.max_publish.hint'] }}</p></div>
+      <div class="field" role="group"><label>{{ t['set.max_actions'] }}</label><input class="input" type="number" name="l.max_actions" value="{{ vm.l.max_actions }}"><p>{{ t['set.max_actions.hint'] }}</p></div>
+      <div class="field" role="group"><label>{{ t['set.pause_min'] }}</label><input class="input" type="number" name="l.pause_min" value="{{ vm.l.pause_min }}"><p>{{ t['set.pause.hint'] }}</p></div>
+      <div class="field" role="group"><label>{{ t['set.pause_max'] }}</label><input class="input" type="number" name="l.pause_max" value="{{ vm.l.pause_max }}"><p>{{ t['set.pause.hint'] }}</p></div>
+    </section></div>
+  </div>
+
+  <!-- profile: sellers -->
+  <div role="tabpanel" id="panel-profile" aria-labelledby="tab-profile" tabindex="-1" hidden class="ka-stack ka-panel">
+    <div class="card"><header><h2 class="card-title">{{ t['set.sellers'] }}</h2><p class="card-description">{{ t["set.remove"] }}</p></header><section class="ka-stack">
+      {% for s in vm.sellers + [{'key': '', 'name': '', 'zipcode': '', 'city': ''}] %}
+      <div class="ka-row">
+        <div class="field" role="group"><label>{{ t['set.key'] }}</label><input class="input" name="seller.key" value="{{ s.key }}" placeholder="{{ t['set.add'] }}…"></div>
+        <div class="field" role="group"><label>{{ t['set.name'] }}</label><input class="input" name="seller.name" value="{{ s.name }}"></div>
+        <div class="field" role="group"><label>{{ t['f.zipcode'] }}</label><input class="input" name="seller.zipcode" value="{{ s.zipcode }}"></div>
+        <div class="field" role="group"><label>{{ t['f.city'] }}</label><input class="input" name="seller.city" value="{{ s.city }}"></div>
+        {% if s.key %}<button type="button" class="btn" data-variant="ghost" data-size="sm" data-delete-row>{{ t['set.delete'] }}</button>{% else %}<span></span>{% endif %}
+      </div>{% endfor %}
+      <div class="field" role="group"><label>{{ t['set.default_seller'] }}</label>
+        <select class="select" name="d.seller" style="max-width:16rem"><option value="">–</option>{% for s in vm.sellers %}<option{% if vm.d.seller == s.key %} selected{% endif %}>{{ s.key }}</option>{% endfor %}</select></div>
+    </section></div>
+  </div>
+
+  <!-- templates: standard texts and price defaults -->
+  <div role="tabpanel" id="panel-templates" aria-labelledby="tab-templates" tabindex="-1" hidden class="ka-stack ka-panel">
+    <div class="card"><header><h2 class="card-title">{{ t['set.conditions'] }}</h2><p class="card-description">{{ t['set.conditions.hint'] }}</p></header><section class="ka-grid">
+      {% for c in vm.conditions %}
+      <div class="field" role="group"><label for="cond-{{ c.key }}">{{ t['cond.' ~ c.key] }}</label>
+        <textarea class="textarea" id="cond-{{ c.key }}" name="cond.{{ c.key }}" rows="2">{{ c.text }}</textarea></div>
+      {% endfor %}
+    </section></div>
+    <div class="card"><header><h2 class="card-title">{{ t['set.blocks'] }}</h2><p class="card-description">{{ t["set.remove"] }}</p></header><section class="ka-stack">
+      <div class="ka-stack" id="blocks">
+      {% for b in vm.blocks + [{'key': '', 'text': ''}] %}
+      <div class="ka-block"{% if b.key %} data-sortable{% endif %}>
+        {% if b.key %}<span class="ka-grip" title="{{ t['set.drag'] }}" aria-label="{{ t['set.drag'] }}"><svg data-icon-lu="grip-vertical" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></span>{% else %}<span></span>{% endif %}
+        <input class="input" name="block.key" value="{{ b.key }}" placeholder="{{ t['set.add'] }}…">
+        <textarea class="textarea" name="block.text" rows="3">{{ b.text }}</textarea>
+        {% if b.key %}<button type="button" class="btn" data-variant="ghost" data-size="sm" data-delete-row>{{ t['set.delete'] }}</button>{% else %}<span></span>{% endif %}
+      </div>{% endfor %}
+      </div>
+      <div class="field" role="group"><label>{{ t['set.default_texts'] }}</label>
+        <div class="ka-checks">{% for b in vm.blocks %}<label><input class="input" type="checkbox" name="d.texts" value="{{ b.key }}"{% if b.key in vm.d.texts %} checked{% endif %}> {{ b.key }}</label>{% endfor %}</div></div>
+    </section></div>
+    <div class="card"><header><h2 class="card-title">{{ t['set.price_defaults'] }}</h2></header><section class="ka-stack">
+      <div class="ka-grid">
+        <div class="field" role="group"><label>{{ t['f.type'] }}</label>
+          <select class="select" name="d.type">{% for v in ['NEGOTIABLE', 'FIXED', 'GIVE_AWAY'] %}<option value="{{ v }}"{% if vm.d.type == v %} selected{% endif %}>{{ t['type.' ~ v] }}</option>{% endfor %}</select></div>
+        <div class="field" role="group"><label>{{ t['f.hold_days'] }}</label><input class="input" type="number" name="d.hold_days" value="{{ vm.d.hold_days }}"><p>{{ t['h.hold_days'] }}</p></div>
+        <div class="field" role="group"><label>{{ t['f.steps'] }}</label><input class="input" type="number" name="d.steps" value="{{ vm.d.steps }}"><p>{{ t['h.steps'] }}</p></div>
+        <div class="field" role="group"><label>{{ t['f.every_days'] }}</label><input class="input" type="number" name="d.every_days" value="{{ vm.d.every_days }}"><p>{{ t['h.every_days'] }}</p></div>
+      </div>
+      <div class="ka-grid">
+        <div class="field" role="group"><label class="ka-checks"><input class="input" type="checkbox" role="switch" name="d.republish"{% if vm.d.republish %} checked{% endif %}> {{ t['f.republish'] }}</label><p>{{ t['h.republish'] }}</p></div>
+        <div class="field" role="group"><label>{{ t['f.after_days'] }}</label><input class="input" type="number" name="d.after_days" value="{{ vm.d.after_days }}"></div>
+        <div class="field" role="group"><label>{{ t['f.max'] }}</label><input class="input" type="number" name="d.max" value="{{ vm.d.max }}"></div>
+      </div>
+    </section></div>
+  </div>
+
+  <!-- shipping -->
+  <div role="tabpanel" id="panel-shipping" aria-labelledby="tab-shipping" tabindex="-1" hidden class="ka-stack ka-panel">
+    <div class="card"><header><h2 class="card-title">{{ t['tab.shipping'] }}</h2><p class="card-description">{{ t['set.shipping.hint'] }}</p></header><section class="ka-stack">
+      <label class="ka-checks"><input class="input" type="checkbox" role="switch" name="d.shipping"{% if vm.d.shipping %} checked{% endif %}> {{ t['set.shipping.on'] }}</label>
+      <div class="field" role="group" style="max-width:16rem"><label>{{ t['f.cost'] }}</label><input class="input" type="number" step="any" name="d.shipping_cost" value="{{ vm.d.shipping_cost }}"><p>{{ t['h.cost'] }}</p></div>
+    </section></div>
+  </div>
+
+  <!-- ai -->
+  <div role="tabpanel" id="panel-ai" aria-labelledby="tab-ai" tabindex="-1" hidden class="ka-stack ka-panel">
+    <div class="card"><header><h2 class="card-title">{{ t['set.ai'] }}</h2><p class="card-description">{{ t['set.ai.hint'] }}</p></header><section class="ka-stack">
+      <div class="field" role="group"><label>{{ t['set.ai.provider'] }}</label>
+        <div class="ka-checks">
+          {% for p in ['command', 'mistral'] %}
+          <label><input class="input" type="radio" name="llm.provider" value="{{ p }}"{% if vm.llm.provider == p %} checked{% endif %}> <b>{{ t['set.ai.p.' ~ p] }}</b>
+            <span class="ka-muted">{{ '✅ ' ~ t['set.ai.ready'] if vm.llm.ready[p] else '❌ ' ~ t['set.ai.not_ready'] }}</span></label>
+          {% endfor %}
+        </div>
+        <p>{{ t['set.ai.provider.hint'] }}</p></div>
+      <label><input class="input" type="checkbox" role="switch" name="llm.fallback"{% if vm.llm.fallback %} checked{% endif %}> {{ t['set.ai.fallback'] }}</label>
+    </section></div>
+    <div class="card"><header><h2 class="card-title">{{ t['set.ai.p.command'] }}</h2><p class="card-description">{{ t['set.ai.command.hint'] }}</p></header><section class="ka-stack">
+      <div class="field" role="group"><label for="ai-command">{{ t['set.llm'] }}</label>
+        <input class="input" id="ai-command" name="llm.command" value="{{ vm.llm.command }}">
+        <p>{{ (t['set.ai.found'] ~ ' ' ~ vm.llm.program) if vm.llm.program else t['set.ai.missing'] }} · {{ t['set.llm.hint'] }}</p></div>
+      <div class="ka-bar"><button class="btn" data-variant="secondary" formaction="/settings/ai-test?provider=command">{{ t['set.ai.test'] }}</button></div>
+    </section></div>
+    <div class="card"><header><h2 class="card-title">{{ t['set.ai.p.mistral'] }}</h2><p class="card-description">{{ t['set.ai.mistral.hint'] }}</p></header><section class="ka-stack">
+      <div class="ka-grid">
+        <div class="field" role="group"><label for="ai-key">{{ t['set.ai.key'] }}</label>
+          <input class="input" type="password" id="ai-key" name="llm.key" autocomplete="off" placeholder="{{ t['set.ai.key_set'] if vm.llm.key_set else t['set.ai.key_missing'] }}">
+          <p>{{ t['set.ai.key.hint'] }}</p></div>
+        <div class="field" role="group"><label for="ai-model">{{ t['set.ai.model'] }}</label>
+          {% if vm.llm.models %}
+          <select class="select" id="ai-model" name="llm.model"><option value="">–</option>
+            {% for m in vm.llm.models %}<option{% if vm.llm.model == m %} selected{% endif %}>{{ m }}</option>{% endfor %}</select>
+          {% else %}<input class="input" id="ai-model" name="llm.model" value="{{ vm.llm.model }}" placeholder="{{ t['set.ai.model.after_key'] }}">{% endif %}
+          <p>{{ vm.llm.models_error or t['set.ai.model.hint'] }}</p></div>
+      </div>
+      <div class="ka-bar"><button class="btn" data-variant="secondary" formaction="/settings/ai-test?provider=mistral">{{ t['set.ai.test'] }}</button></div>
+    </section></div>
+    <div class="card"><header><h2 class="card-title">{{ t['set.replies'] }}</h2><p class="card-description">{{ t['set.replies.hint'] }}</p></header><section class="ka-stack">
+      <div class="ka-checks">
+        {% for v in ['off', 'draft', 'auto'] %}
+        <label><input class="input" type="radio" name="r.mode" value="{{ v }}"{% if vm.replies.mode == v %} checked{% endif %}> <b>{{ t['set.replies.' ~ v] }}</b></label>
+        {% endfor %}
+      </div>
+      <ul class="ka-muted" style="margin:0;padding-left:1.2rem">
+        <li>{{ t['set.replies.off.hint'] }}</li><li>{{ t['set.replies.draft.hint'] }}</li><li>{{ t['set.replies.auto.hint'] }}</li>
+      </ul>
+      <div class="field" role="group" style="max-width:20rem"><label>{{ t['set.replies.max'] }}</label>
+        <input class="input" type="number" name="r.max_auto" value="{{ vm.replies.max_auto }}"><p>{{ t['set.replies.max.hint'] }}</p></div>
+    </section></div>
+  </div>
+</div>
+</form>
+<script>
+// standard texts: drag the grip to sort (the order is used when texts are appended)
+(() => {
+  const list = document.getElementById('blocks');
+  if (!list) return;
+  let drag = null;
+  const rows = () => [...list.querySelectorAll('.ka-block[data-sortable]')];
+  const glide = (mutate) => {
+    const before = new Map(rows().map((el) => [el, el.getBoundingClientRect().top]));
+    mutate();
+    rows().forEach((el) => {
+      const dy = before.get(el) - el.getBoundingClientRect().top;
+      if (dy && el !== drag) el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 150, easing: 'ease-out' });
+    });
+  };
+  list.addEventListener('pointerdown', (ev) => {
+    const grip = ev.target.closest('.ka-grip');
+    if (!grip) return;
+    drag = grip.closest('.ka-block');
+    drag.setAttribute('data-dragging', '');
+    list.setPointerCapture(ev.pointerId);
+    ev.preventDefault();
+  });
+  list.addEventListener('pointermove', (ev) => {
+    if (!drag) return;
+    const over = rows().find((el) => { const r = el.getBoundingClientRect(); return ev.clientY >= r.top && ev.clientY <= r.bottom; });
+    if (!over || over === drag) return;
+    const after = rows().indexOf(over) > rows().indexOf(drag);
+    glide(() => list.insertBefore(drag, after ? over.nextElementSibling : over));
+  });
+  const end = () => { if (drag) { drag.removeAttribute('data-dragging'); drag = null; } };
+  list.addEventListener('pointerup', end);
+  list.addEventListener('pointercancel', end);
+})();
+// delete a row: empty its fields (an empty short name is dropped on save) and hide it
+document.querySelectorAll('[data-delete-row]').forEach((b) => b.addEventListener('click', () => {
+  const row = b.closest('.ka-row, .ka-block');
+  row.querySelectorAll('input, textarea').forEach((el) => { el.value = ''; });
+  row.hidden = true;
+}));
+(() => {
+  // remember the open tab across saves (per-viewer convenience only)
+  const key = 'kassist.settings.tab';
+  let saved = null;
+  try { saved = localStorage.getItem(key); } catch (e) { /* storage blocked */ }
+  const open = (id) => { const tab = document.getElementById(id); if (tab) tab.click(); };
+  if (saved) setTimeout(() => open(saved), 0);
+  document.querySelectorAll('#set-tabs [role=tab]').forEach((tab) => tab.addEventListener('click', () => {
+    try { localStorage.setItem(key, tab.id); } catch (e) { /* storage blocked */ }
+  }));
+})();
+</script>
+{% endblock %}

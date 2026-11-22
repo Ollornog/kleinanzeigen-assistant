@@ -1,0 +1,65 @@
+# kassist listing — one per item folder, next to the photos.
+# Empty values come from listing_defaults in ~/.config/kassist/config.yaml (default in brackets).
+# Leere Werte kommen aus listing_defaults in der Konfiguration (Vorgabe in Klammern).
+
+approved: false            # nothing happens before true / erst bei true passiert etwas
+
+title: ""                  # max. 65 characters / Zeichen
+description: |             # item text; standard texts are appended / Artikeltext, Standardtexte kommen dazu
+  ...
+
+category:                  # optional, e.g. "Elektronik > Notebooks" or an id like 161/278
+attributes:                # optional category fields, e.g. {condition: like_new}
+
+seller:                    # profile from config "sellers" (name, location) / Anbieter
+texts:                     # standard text blocks from config "text_blocks", e.g. [condition, payment, legal]
+facts:                     # key data; show: true puts it under the item text, false keeps it as context for the AI
+  condition:
+    value:                 # new_sealed | new | like_new | very_good | good | used | defect / Zustand
+    show:                  # condition sentence in the text (true)
+  purchase_price:
+    value:                 # what you paid, EUR / eigener Kaufpreis
+    show:                  # (true)
+  market_new:
+    value:                 # what it costs new today / Marktneupreis
+    show:                  # (false)
+  market_used:
+    value:                 # Kleinanzeigen median from the price check / gebraucht gehandelt um
+    show:                  # (false)
+  extra:                   # more lines, e.g. [{label: Lieferumfang, value: "Kabel, Netzteil", show: true}]
+
+pricing:
+  start:                   # start price EUR / Startpreis
+  reduce_to:               # automatic weekly reduction stops here / automatisch senken bis
+  min_sale:                # lowest price to accept in chats / Verkaufspreis mindestens (reduce_to)
+  type:                    # NEGOTIABLE (VB) | FIXED | GIVE_AWAY  (NEGOTIABLE)
+  schedule:
+    hold_days:             # keep the start price this long / so lange Startpreis halten (14)
+    steps:                 # equal reductions from start to reduce_to / Anzahl gleicher Senkungen (3)
+    step:                  # instead: fixed euros or "10%" per step / stattdessen feste Schrittweite
+    every_days:            # one step per … days / alle … Tage ein Schritt (7)
+
+availability:
+  from:                    # publish not before / verkaufbar ab, e.g. 2026-12-01
+  until:                   # withdraw after / verkaufbar bis
+
+location:                  # overrides the seller's location / abweichender Ort
+  zipcode:
+  city:
+
+shipping:
+  enabled:                 # shipping offered / Versand ja/nein (false)
+  cost:                    # EUR
+
+republish:
+  enabled:                 # publish again after expiry / nach Ablauf neu einstellen (true)
+  after_days:              # wait after expiry / Wartezeit nach Ablauf (14)
+  max:                     # how often / wie oft (2)
+
+photos:
+  order:                   # photo order, the first is the cover / Reihenfolge, das erste ist das Titelbild
+  skip:                    # photos not used in the ad / nicht verwendete Fotos
+
+price_check:
+  query:                   # search words for `kassist prices` / Suchbegriffe Preisvergleich
+  exclude:                 # extra words that drop results / zusätzliche Ausschlusswörter

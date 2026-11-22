@@ -1,0 +1,11 @@
+C22 - shared design system (look). Copy, do not edit.
+
+Version: 950e9ad
+Commit:  950e9ad2adf6ef8be9b1ddaf06a9d44cc5e857b5
+Pack:    vega
+Fetched: 2026-11-22 by scripts/vendor-c22.sh
+
+Contains: css/c22.css (pack), js/basecoat.all.min.js, js/c22.js, js/icons.js (Phosphor, MIT), fonts/inter.woff2
+(Inter, SIL Open Font License 1.1 - licence text in fonts/OFL.txt). C22 itself: MIT.
+
+Changes to the look belong in C22, not here: a fix in this copy is gone after the next vendor run.

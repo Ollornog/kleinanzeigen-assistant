@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="kassist">
+  <!-- kassist logo: a price tag inside a gear (own drawing) -->
+  <g fill="#2f8f4e" transform="translate(32 32)">
+    <g id="tooth"><rect x="-4.5" y="-31" width="9" height="12" rx="2"/></g>
+    <use href="#tooth" transform="rotate(45)"/><use href="#tooth" transform="rotate(90)"/>
+    <use href="#tooth" transform="rotate(135)"/><use href="#tooth" transform="rotate(180)"/>
+    <use href="#tooth" transform="rotate(225)"/><use href="#tooth" transform="rotate(270)"/>
+    <use href="#tooth" transform="rotate(315)"/>
+    <circle r="23"/>
+  </g>
+  <circle cx="32" cy="32" r="17" fill="#fff"/>
+  <path d="M22 27.5v-6a2.5 2.5 0 0 1 2.5-2.5h6l12 12a2.5 2.5 0 0 1 0 3.5l-6 6a2.5 2.5 0 0 1-3.5 0z" fill="#2f8f4e"/>
+  <circle cx="26.5" cy="23.5" r="2" fill="#fff"/>
+</svg>

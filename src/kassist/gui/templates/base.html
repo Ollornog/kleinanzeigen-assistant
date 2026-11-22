@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ t['app'] }}{% endblock %} · kassist</title>
+<script>if (matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark');</script>
+<link rel="stylesheet" href="/static/c22/css/c22.css?v={{ v }}">
+<link rel="stylesheet" href="/static/app.css?v={{ v }}">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<script src="/static/c22/js/basecoat.all.min.js?v={{ v }}" defer></script>
+<script src="/static/c22/js/icons.js?v={{ v }}" defer></script>
+<script src="/static/c22/js/c22.js?v={{ v }}" defer></script>
+</head>
+<body>
+<div class="ka-shell">
+  <nav class="ka-nav">
+    <a class="ka-brand" href="/" style="color:inherit;text-decoration:none"><img src="/static/icon.svg" alt="">{{ t['app'] }}</a>
+    <div class="ka-bigbtns" id="sync" data-running="{{ sync.running or '' }}"
+         data-t-running="{{ t['sync.running'] }}" data-t-last="{{ t['sync.last'] }}" data-t-next="{{ t['sync.next'] }}" data-t-off="{{ t['sync.off'] }}">
+      <button type="button" class="btn ka-bigbtn" data-variant="outline" title="{{ t['items.new'] }}" aria-label="{{ t['items.new'] }}"
+              onclick="document.getElementById('new-item').showModal()">
+        <svg data-icon-lu="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        <span>{{ t['nav.new'] }}</span></button>
+      <form method="post" action="/sync">
+        <button class="btn ka-bigbtn" title="{{ t['sync.button'] }}" aria-label="{{ t['sync.button'] }}"{% if sync.running %} disabled data-spin{% endif %}>
+          <svg data-icon-lu="refresh-cw" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+          <span>{{ t['nav.sync'] }}</span></button>
+      </form>
+    </div>
+    <span class="ka-muted ka-syncline" id="sync-status">{% if sync.running %}{{ t['sync.running'] }}{% else %}{% set parts = [] %}{% if sync.last_sync %}{% set _ = parts.append(t['sync.last'] ~ ' ' ~ sync.last_sync) %}{% endif %}{% if sync.next_sync %}{% set _ = parts.append(t['sync.next'] ~ ' ' ~ sync.next_sync) %}{% endif %}{% if not sync.auto %}{% set _ = parts.append(t['sync.off']) %}{% endif %}{{ parts|join(' · ') }}{% endif %}</span>
+    {% if sync.error %}<span class="ka-clamp ka-syncerr" title="{{ sync.error }}">{{ sync.error }}</span>{% endif %}
+    {% for href, key in [('/', 'nav.items'), ('/inbox', 'nav.inbox'), ('/settings', 'nav.settings'), ('/log', 'nav.log')] %}
+    <a class="ka-link" href="{{ href }}"{% if path == href or (href != '/' and path.startswith(href)) or (href == '/' and path.startswith('/items')) %} aria-current="page"{% endif %}>{{ t[key] }}</a>
+    {% endfor %}
+    <form method="post" action="/browser/show" class="ka-browserbtn"><button class="btn" data-variant="ghost" data-size="sm" style="width:100%">{{ t['browser.show'] }}</button></form>
+    <form method="post" action="/quit" class="ka-browserbtn" onsubmit="return confirm({{ t['quit.confirm']|tojson }})"><button class="btn" data-variant="ghost" data-size="sm" style="width:100%">{{ t['quit'] }}</button></form>
+    <div class="ka-about">
+      <span>kassist {{ version }}</span>
+      <a href="https://github.com/Ollornog" target="_blank" rel="noopener">github.com/Ollornog</a>
+      <span>{{ t['about.uses'] }} <a href="https://github.com/Second-Hand-Friends/kleinanzeigen-bot" target="_blank" rel="noopener">kleinanzeigen-bot</a> (AGPL-3.0),
+        <a href="https://github.com/Ollornog/C22" target="_blank" rel="noopener">C22</a> (MIT)</span>
+      <span>{{ t['about.note'] }}</span>
+    </div>
+  </nav>
+  <main class="ka-main">
+    <div class="ka-banners">
+      {% if flash %}<div class="alert" data-variant="{{ flash_kind or 'info' }}" role="status"><section class="ka-pre">{{ flash }}</section></div>{% endif %}
+      {% block banners %}{% endblock %}
+    </div>
+    <header class="ka-head">{% block head %}{% endblock %}</header>
+    <div class="ka-content" id="content">
+      {% block body %}{% endblock %}
+    </div>
+  </main>
+</div>
+<dialog id="new-item" class="dialog" aria-labelledby="new-item-title" onclick="if (event.target === this) this.close()">
+  <form method="post" action="/items/new">
+    <header><h2 id="new-item-title">{{ t['items.new'] }}</h2><p>{{ t['items.new.hint'] }}</p></header>
+    <section><input class="input" name="name" placeholder="{{ t['items.new_name'] }}" required autofocus style="width:100%"></section>
+    <footer>
+      <button type="button" class="btn" data-variant="outline" onclick="this.closest('dialog').close()">{{ t['ph.close'] }}</button>
+      <button class="btn">{{ t['items.create'] }}</button>
+    </footer>
+  </form>
+</dialog>
+<script>
+(() => {
+  const box = document.getElementById('sync');
+  if (!box) return;
+  const label = document.getElementById('sync-status');
+  const btn = box.querySelector('form[action="/sync"] button');
+  let wasRunning = !!box.dataset.running;
+  const tick = () => fetch('/status').then((r) => r.json()).then((s) => {
+    btn.disabled = !!s.running;
+    btn.toggleAttribute('data-spin', !!s.running);
+    label.textContent = s.running ? box.dataset.tRunning
+      : [s.last_sync ? `${box.dataset.tLast} ${s.last_sync}` : '', s.next_sync ? `${box.dataset.tNext} ${s.next_sync}` : '',
+         s.auto ? '' : box.dataset.tOff].filter(Boolean).join(' · ');
+    if (wasRunning && !s.running) {
+      const rows = document.getElementById('item-rows');
+      if (rows) fetch(rows.dataset.src).then((r) => r.text()).then((h) => { rows.innerHTML = h; rows.dispatchEvent(new Event('ka-rows')); });
+    }
+    wasRunning = !!s.running;
+  }).catch(() => {});
+  setInterval(tick, 10000);
+})();
+</script>
+</body>
+</html>

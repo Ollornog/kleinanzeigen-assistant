@@ -1,0 +1,109 @@
+name: Release
+
+# A tag `vX.Y.Z` creates a GitHub release with wheel, sdist and SHA256SUMS. kassist is a desktop
+# app, not a service: no container image.
+#
+# Order on purpose: check the version, run the suite, build, then publish. A release with a wrong
+# number is worse than none, it is quietly wrong.
+#
+# Rehearsal: on every pull request and on `workflow_dispatch` the workflow runs up to the build and
+# verifies the wheel; only the publish job depends on the tag. A tag-only workflow is otherwise
+# never touched by CI and breaks unnoticed until the next tag.
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+# Read-only at the top; only the job that publishes gets write access, and it runs no package code.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.13"
+
+      # No cache in a release workflow: a restored cache could carry a poisoned tool.
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d  # v10.4.0
+        with:
+          version: "0.13.9"
+          enable-cache: false
+
+      - name: Tag against the package version
+        if: github.ref_type == 'tag'
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(sed -n 's/^version = "\(.*\)"$/\1/p' pyproject.toml)"
+          init="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/kassist/__init__.py)"
+          echo "tag $tag, pyproject $pkg, __init__ $init"
+          [ "$tag" = "$pkg" ] && [ "$pkg" = "$init" ] || { echo "tag and package version differ" >&2; exit 1; }
+          grep -q "^## \[$pkg\]" CHANGELOG.md || { echo "CHANGELOG has no section [$pkg]" >&2; exit 1; }
+
+      # Without a tag there is nothing to compare; check what can be checked.
+      - name: Rehearsal - version and CHANGELOG
+        if: github.ref_type != 'tag'
+        run: |
+          pkg="$(sed -n 's/^version = "\(.*\)"$/\1/p' pyproject.toml)"
+          echo "Rehearsal without a tag. Package version: $pkg"
+          grep -q "^## \[$pkg\]" CHANGELOG.md || { echo "CHANGELOG has no section [$pkg]" >&2; exit 1; }
+
+      # On a pull request ci.yml runs the same suite on the same commit.
+      - name: Suite before anything is built
+        if: github.event_name != 'pull_request'
+        env:
+          PYTHON: "3.13"
+        run: ./scripts/check.sh
+
+      - name: Build wheel and sdist
+        run: uv build --out-dir dist
+
+      # Use the artefact, do not trust the green tick: install the wheel into a fresh venv.
+      - name: Wheel installs and starts
+        run: |
+          uv venv -q --python 3.13 "$RUNNER_TEMP/verify"
+          uv pip install -q --python "$RUNNER_TEMP/verify/bin/python" dist/*.whl
+          cd "$RUNNER_TEMP" && "$RUNNER_TEMP/verify/bin/kassist" --help >/dev/null
+          "$RUNNER_TEMP/verify/bin/python" -c "import kassist; print('kassist', kassist.__version__)"
+
+      - name: Checksums
+        run: cd dist && sha256sum ./* > SHA256SUMS && cat SHA256SUMS
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write   # gh release create
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: dist
+          path: dist
+
+      - name: Checksums still match
+        run: cd dist && sha256sum -c SHA256SUMS
+
+      # `gh` instead of a third-party action: that one would need write access and its tag could move.
+      # `--verify-tag`: never create a tag here, only release an existing one.
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes --verify-tag

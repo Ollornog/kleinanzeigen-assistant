@@ -1,0 +1,80 @@
+name: audit
+
+# The vulnerability gate. Dependabot alerts are repo-wide, but an alert is not a gate: a PR with a
+# vulnerable resolution would still be green.
+#
+# Three resolutions, because each carries a different promise:
+#   newest  - what `pip install kleinanzeigen-assistant[test]` pulls today
+#   floor   - the lowest allowed version of every direct dependency (`lowest-direct`): the promise
+#             of the `>=` bounds in pyproject.toml. Dependabot never raises an open `>=` floor.
+#   tools   - the hashed tool list of this gate (.github/audit/requirements.txt)
+#
+# kleinanzeigen-bot is a git dependency pinned by commit and not on PyPI, so pip-audit cannot look
+# it up; its own dependencies are resolved and audited like the rest. Its pin is raised by hand
+# after reading the upstream diff.
+#
+# Nightly as well, because advisories appear without a code change.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # GitHub cron is UTC only: 02:45 UTC = 03:45 Europe/Berlin (CET) or 04:45 (CEST).
+    - cron: "45 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.13"
+
+      # Own environment, pinned with hashes: the checking tool does not belong in the environment it
+      # checks, and it does not come in whatever version the index has today.
+      - name: Tools
+        run: |
+          python -m venv "$RUNNER_TEMP/audit"
+          "$RUNNER_TEMP/audit/bin/pip" install --require-hashes --no-deps -r .github/audit/requirements.txt
+
+      # Resolve only, install nothing: metadata from the wheels, no package code runs.
+      # `--python-version` = the lower end of requires-python, where the resolution is oldest.
+      - name: Resolve (newest and lowest allowed versions)
+        run: |
+          uv="$RUNNER_TEMP/audit/bin/uv"
+          "$uv" pip compile pyproject.toml --all-extras --python-version 3.13 --no-header \
+              -o "$RUNNER_TEMP/newest-all.txt"
+          "$uv" pip compile pyproject.toml --all-extras --resolution lowest-direct \
+              --python-version 3.13 --no-header -o "$RUNNER_TEMP/floor-all.txt"
+          for f in newest floor; do
+            grep -v '^kleinanzeigen-bot @ git+' "$RUNNER_TEMP/$f-all.txt" > "$RUNNER_TEMP/$f.txt"
+            # Zero packages would be a green run without a finding: that is an error, not evidence.
+            [ "$(grep -cE '^[A-Za-z0-9_.-]+==' "$RUNNER_TEMP/$f.txt")" -gt 0 ] \
+              || { echo "::error::$f: nothing resolved - the run checked nothing"; exit 1; }
+          done
+
+      # `--strict`: a package pip-audit cannot look up is an error, not a skip.
+      - name: pip-audit
+        run: |
+          audit="$RUNNER_TEMP/audit/bin/pip-audit"
+          for f in newest floor; do
+            echo "::group::$f"
+            "$audit" --strict --progress-spinner off --no-deps --disable-pip -r "$RUNNER_TEMP/$f.txt"
+            echo "::endgroup::"
+          done
+          echo "::group::tools"
+          "$audit" --strict --progress-spinner off --require-hashes --disable-pip \
+              -r .github/audit/requirements.txt
+          echo "::endgroup::"

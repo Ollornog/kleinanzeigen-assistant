@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ t['nav.log'] }}{% endblock %}
+{% block head %}<h1 class="ka-grow text-xl font-semibold">{{ t['nav.log'] }}</h1>{% endblock %}
+{% block body %}
+{% if not events %}<p class="ka-muted">{{ t['log.empty'] }}</p>{% else %}
+<div class="table-container"><table class="table"><tbody>
+  {% for e in events %}<tr><td class="ka-muted">{{ e.at }}</td><td>{{ e.item_key or '' }}</td><td>{{ e.kind }}</td><td class="ka-pre">{{ e.detail or '' }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% endif %}
+{% endblock %}

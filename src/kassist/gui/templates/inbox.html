@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ t['nav.inbox'] }}{% endblock %}
+{% block head %}
+  <h1 class="ka-grow text-xl font-semibold">{{ t['nav.inbox'] }}</h1>
+{% endblock %}
+{% block body %}
+<table class="table ka-items">
+  <tbody id="inbox-rows" data-src="/fragments/inbox">
+    {% for _ in range(5) %}<tr aria-hidden="true"><td style="width:6rem"><span class="skeleton ka-sk" style="width:3rem"></span></td>
+      <td><span class="skeleton ka-sk" style="width:60%"></span></td><td><span class="skeleton ka-sk"></span></td><td><span class="skeleton ka-sk"></span></td></tr>{% endfor %}
+  </tbody>
+</table>
+<script>
+fetch(document.getElementById('inbox-rows').dataset.src).then((r) => r.text())
+  .then((html) => { document.getElementById('inbox-rows').innerHTML = html; });
+</script>
+{% endblock %}

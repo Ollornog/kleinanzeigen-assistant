@@ -1,0 +1,4 @@
+{% for c in convs %}<tr>
+  <td>{% if c.unread %}<span class="badge" data-variant="info">{{ t['inbox.unread'] }}</span>{% endif %}{% if c.draft %} <span class="badge" data-variant="outline">{{ t['inbox.has_draft'] }}</span>{% endif %}</td>
+  <td><a href="/inbox/{{ c.id|urlencode }}">{{ c.ad_title }}</a></td><td>{{ c.partner }}</td><td class="ka-muted">{{ c.last_message_at }}</td>
+</tr>{% else %}<tr><td colspan="4" class="ka-muted">{{ t['inbox.empty'] }}</td></tr>{% endfor %}

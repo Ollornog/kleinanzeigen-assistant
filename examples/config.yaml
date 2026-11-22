@@ -1,0 +1,52 @@
+# ~/.config/kassist/config.yaml — every key is optional.
+source_dir: ~/Kleinanzeigen          # one subfolder per item
+# data_dir: ~/.local/share/kassist   # state, browser profile, bot workspace
+# cdp_port: 9333
+
+# Defaults for every listing.yaml (same structure; the item file wins, empty values do not)
+listing_defaults:
+  seller: me
+  texts: [condition, payment, legal]
+  pricing:
+    type: NEGOTIABLE
+    schedule: {hold_days: 14, step: "5", every_days: 7}
+  shipping: {enabled: false}
+  republish: {enabled: true, after_days: 14, max: 2}
+
+# Seller profiles: name and location used in the ad (Kleinanzeigen needs a German postcode)
+sellers:
+  me:
+    name: Your Name
+    location: {zipcode: "10115", city: Berlin}
+
+# Standard texts appended to the description via `texts:`
+text_blocks:
+  condition: >-
+    All flaws are shown in the photos. Just ask if anything is unclear.
+  payment: >-
+    Cash on pickup or bank transfer. Shipping after payment.
+  legal: >-
+    Private sale, no warranty, no returns.
+
+limits:
+  max_publish: 3                     # new ads per run (captcha after ~10 in a short time)
+  max_actions: 8
+  pause_seconds: [45, 150]
+
+llm:
+  provider: command                  # asked first: command (Claude Code, local) | mistral (API)
+  fallback: true                     # the other one answers when the first fails
+  model: mistral-medium-2604         # Mistral: a pinned model name; key MISTRAL_API_KEY in secrets.env
+  # command: leave unset - the default runs `claude -p` without tools, MCP servers, hooks or CLAUDE.md
+
+replies:
+  mode: draft                        # off | draft | auto
+  max_auto: 3                        # automatic replies per conversation
+
+auto:
+  enabled: true                      # sync while kassist runs (tray)
+  sync_minutes: 1440                 # daily; skipped when nothing is online or due
+  inbox_minutes: 10
+
+# condition_texts:                   # wording per condition level (defaults in src/kassist/config.py)
+#   like_new: "Zustand: gebraucht, wie neu."

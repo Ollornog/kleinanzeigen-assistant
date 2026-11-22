@@ -1,0 +1,7 @@
+# The tools of the vulnerability gate (.github/workflows/audit.yml), pinned with hashes in
+# requirements.txt next to this file: a checking tool that comes in whatever version the index has
+# today is itself an unchecked part of the supply chain.
+# Deliberately NOT `requirements.in`: with that name Dependabot would treat requirements.txt as a
+# pip-compile output and regenerate it instead of raising the lines with their hashes.
+pip-audit
+uv

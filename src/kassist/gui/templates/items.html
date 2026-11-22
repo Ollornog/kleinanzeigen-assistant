@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ t['nav.items'] }}{% endblock %}
+{% block head %}
+  <h1 class="ka-grow text-xl font-semibold">{{ t['nav.items'] }}</h1>
+  <input class="input ka-filter" id="filter" type="search" placeholder="{{ t['items.filter'] }}" autocomplete="off">
+{% endblock %}
+{% block body %}
+{% if not source_ok %}
+<div class="alert" data-variant="warning" role="status"><section>{{ t['items.empty'] }}</section></div>
+{% else %}
+<table class="table ka-items">
+  <colgroup><col style="width:4.5rem"><col><col style="width:9rem"><col style="width:5.5rem"><col style="width:8.5rem"><col style="width:7rem"><col style="width:22%"></colgroup>
+  <thead><tr><th></th><th>{{ t['col.item'] }}</th><th>{{ t['col.state'] }}</th><th class="text-end">{{ t['col.price'] }}</th>
+    <th class="text-end">{{ t['col.reduce'] }}</th><th class="text-end">{{ t['col.market'] }}</th><th>{{ t['col.next'] }}</th></tr></thead>
+  <tbody id="item-rows" data-src="/fragments/items">
+    {% for _ in range(6) %}
+    <tr aria-hidden="true"><td><span class="ka-thumb skeleton"></span></td><td><span class="skeleton ka-sk" style="width:60%"></span></td>
+      <td><span class="skeleton ka-sk" style="width:5rem"></span></td><td><span class="skeleton ka-sk"></span></td>
+      <td><span class="skeleton ka-sk"></span></td><td><span class="skeleton ka-sk"></span></td><td><span class="skeleton ka-sk"></span></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<script>
+(() => {
+  const rows = document.getElementById('item-rows');
+  const filter = document.getElementById('filter');
+  const apply = () => {
+    const words = filter.value.toLowerCase().split(/\s+/).filter(Boolean);
+    rows.querySelectorAll('tr[data-search]').forEach((tr) => {
+      tr.hidden = !words.every((w) => tr.dataset.search.includes(w));
+    });
+  };
+  filter.addEventListener('input', apply);
+  filter.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') ev.preventDefault(); });
+  rows.addEventListener('ka-rows', apply);
+  fetch(rows.dataset.src, {headers: {'Accept': 'text/html'}}).then((r) => r.text())
+    .then((html) => { rows.innerHTML = html; apply(); });
+})();
+</script>
+{% endif %}
+{% endblock %}

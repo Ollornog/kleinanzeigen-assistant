@@ -1,0 +1,16 @@
+{% if not rows %}
+<tr><td colspan="7"><div class="alert" data-variant="info" role="status"><section>{{ t['items.empty'] }}</section></div></td></tr>
+{% endif %}
+{% for r in rows %}
+<tr data-search="{{ (r.key ~ ' ' ~ (r.title or '') ~ ' ' ~ t['state.' ~ r.status] ~ ' ' ~ (r.category or ''))|lower }}">
+  <td>{% if r.thumb %}<a href="/items/{{ r.key|urlencode }}" tabindex="-1"><img class="ka-thumb" src="{{ r.thumb }}" alt="" loading="lazy"></a>{% else %}<span class="ka-thumb skeleton"></span>{% endif %}</td>
+  <td><a href="/items/{{ r.key|urlencode }}"><b>{{ r.key }}</b></a>{% if r.title %}<div class="ka-muted ka-clamp">{{ r.title }}</div>{% endif %}
+    {% if r.error %}<div class="ka-muted ka-clamp" title="{{ r.error }}">{{ r.error }}</div>{% endif %}</td>
+  <td><span class="badge" data-variant="{{ r.variant }}">{{ t['state.' ~ r.status] }}</span>
+      {% if r.approved %}<div><span class="badge" data-variant="outline">{{ t['col.approved'] }}</span></div>{% endif %}</td>
+  <td class="text-end">{% if r.price is not none %}{{ r.price }} €{% endif %}</td>
+  <td class="text-end">{% if r.reduce_to is not none %}{{ r.reduce_to }} / {{ r.min_sale }} €{% endif %}</td>
+  <td class="text-end">{% if r.market %}{{ r.market }} €{% endif %}{% if r.market_ai %}<div class="ka-muted">{{ t['m.ai'] }} {{ r.market_ai }} €</div>{% endif %}</td>
+  <td class="ka-muted"><div class="ka-clamp" title="{{ r.next }}">{{ r.next }}</div></td>
+</tr>
+{% endfor %}

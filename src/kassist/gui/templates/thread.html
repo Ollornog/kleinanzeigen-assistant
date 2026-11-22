@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ conv.ad_title }}{% endblock %}
+{% block head %}
+  <a class="btn" data-variant="ghost" href="/inbox">← {{ t['nav.inbox'] }}</a>
+  <h1 class="ka-grow text-xl font-semibold">{{ conv.ad_title }}</h1><span class="ka-muted">{{ conv.partner }}</span>
+{% endblock %}
+{% block body %}
+<div class="ka-thread">{% for m in msgs %}
+  <div class="ka-msg"{% if m.outgoing %} data-out{% endif %}>{{ m.text }}<div class="ka-muted">{{ m.sent_at }}</div></div>{% endfor %}
+</div>
+<form method="post" action="/inbox/{{ conv.id|urlencode }}/send" class="card"><section class="ka-stack">
+  <div class="field" role="group"><label for="reply">{{ t['inbox.draft'] }}</label>
+    <textarea class="textarea" id="reply" name="text" rows="6">{{ draft.text if draft else '' }}</textarea></div>
+  <input type="hidden" name="draft_id" value="{{ draft.id if draft else '' }}">
+  <div class="ka-bar"><button class="btn" onclick="return confirm('{{ t['confirm'] }}')">{{ t['inbox.send'] }}</button>
+    <button class="btn" data-variant="outline" formaction="/inbox/{{ conv.id|urlencode }}/redraft">{{ t['inbox.redraft'] }}</button></div>
+</section></form>
+{% endblock %}

@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ vm.key }}{% endblock %}
+{% macro text(name, label, hint='', type='text') -%}
+<div class="field" role="group">
+  <label for="f-{{ name }}">{{ t[label] }}</label>
+  <input class="input" type="{{ type }}" id="f-{{ name }}" name="{{ name }}" value="{{ vm.form[name] }}"
+         placeholder="{{ vm.placeholders.get(name, '') }}"{% if type == 'number' %} step="any"{% endif %}>
+  {% if hint %}<p>{{ t[hint] }}</p>{% endif %}
+</div>
+{%- endmacro %}
+{% macro tri(name, label, hint='') -%}
+<div class="field" role="group">
+  <label for="f-{{ name }}">{{ t[label] }}</label>
+  <select class="select" id="f-{{ name }}" name="{{ name }}">
+    {% for v, k in [('', 'opt.default'), ('true', 'opt.yes'), ('false', 'opt.no')] %}
+    <option value="{{ v }}"{% if vm.form[name] == v %} selected{% endif %}>{{ t[k] }}</option>{% endfor %}
+  </select>
+  {% if hint %}<p>{{ t[hint] }}</p>{% endif %}
+</div>
+{%- endmacro %}
+{% set base = '/items/' ~ (vm.key|urlencode) %}
+{% block banners %}
+{% if vm.error %}<div class="alert" data-variant="destructive" role="alert"><section>{{ vm.error }}</section></div>{% endif %}
+{% if vm.staged %}<div class="alert" data-variant="{{ 'warning' if vm.staged == 'pending' else 'info' }}" role="status">
+  <section>{{ t['stg.' ~ vm.staged] }}{% if vm.changed %} {{ t['stg.fields'] }}: {% for f in vm.changed %}{{ t['fld.' ~ f] }}{% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}</section></div>{% endif %}
+{% endblock %}
+{% block head %}
+  <a class="btn" data-variant="ghost" data-size="sm" href="/" aria-label="{{ t['item.back'] }}">←</a>
+  <div class="ka-title">
+    <h1 class="text-xl font-semibold">{{ vm.key }}
+      <span class="badge" data-variant="{{ vm.variant }}">{{ t['state.' ~ vm.status] }}</span>
+      {% if vm.staged %}<span class="badge" data-variant="warning">{{ t['stg.fields'] }}</span>{% endif %}
+      <span class="badge" data-variant="warning" id="unsaved" hidden>{{ t['tb.unsaved'] }}</span></h1>
+    {% if vm.title %}<small title="{{ t['f.title_ad'] }}">{{ vm.title }}</small>{% endif %}
+  </div>
+  {% if vm.has_listing %}
+  {% set oa = vm.online_action %}
+  <div class="ka-actions-grid">
+    <button class="btn ka-a1" form="listing-form" title="{{ t['x.save'] }}">{{ icon('save') }}{{ t['tb.save'] }}</button>
+    {% if vm.form.approved %}
+    <button type="button" class="btn ka-a1" data-variant="outline" data-approve="" title="{{ t['x.unapprove'] }}" aria-pressed="true">{{ icon('check') }}{{ t['tb.approved_on'] }}</button>
+    {% else %}
+    <button type="button" class="btn ka-a1" data-variant="secondary" data-approve="on" title="{{ t['x.approve'] }}" aria-pressed="false">{{ icon('check') }}{{ t['tb.approve'] }}</button>
+    {% endif %}
+    <button class="btn ka-a2" form="f-run" data-guard title="{{ t['x.online'] }}"{% if not oa.enabled %} disabled{% endif %}>{{ icon('upload') }}{{ t[oa.label] }}</button>
+    {% if 'activate' in vm.actions %}
+    <button class="btn ka-a3" data-variant="outline" form="f-activate" data-guard data-confirm title="{{ t['x.resume'] }}">{{ icon('play') }}{{ t['tb.resume'] }}</button>
+    {% else %}
+    <button class="btn ka-a3" data-variant="outline" form="f-reserve" data-guard data-confirm title="{{ t['x.pause'] }}"{% if 'reserve' not in vm.actions %} disabled{% endif %}>{{ icon('pause') }}{{ t['tb.pause'] }}</button>
+    {% endif %}
+    <button class="btn ka-a3" data-variant="outline" form="f-sold" data-guard data-confirm title="{{ t['x.sold'] }}"{% if 'sold' not in vm.actions %} disabled{% endif %}>{{ icon('tag') }}{{ t['tb.sold'] }}</button>
+    <button class="btn ka-a3" data-variant="destructive" form="f-withdraw" data-guard data-confirm title="{{ t['x.delete'] }}"{% if 'withdraw' not in vm.actions %} disabled{% endif %}>{{ icon('trash') }}{{ t['tb.delete'] }}</button>
+  </div>
+  {% endif %}
+{% endblock %}
+{% block body %}
+
+{% if not vm.has_listing %}
+<div class="card"><section class="ka-stack">
+  <p>{{ t['item.no_listing'] }}</p>
+  {% if vm.sources %}
+  <form method="post" action="{{ base }}/import" class="ka-stack" id="import-form">
+    <div class="field" role="group" style="max-width:28rem"><label for="import-source">{{ t['item.source'] }}</label>
+      {% if vm.sources|length > 1 %}
+      <select class="select" id="import-source" name="source">{% for s in vm.sources %}<option>{{ s }}</option>{% endfor %}</select>
+      {% else %}<input type="hidden" name="source" value="{{ vm.sources[0] }}"><span><b>{{ vm.sources[0] }}</b></span>{% endif %}
+      <p>{{ t['item.source.hint'] }}</p></div>
+    <div class="ka-bar">
+      <button class="btn" name="how" value="plain">{{ icon('file-text') }}{{ t['item.import.plain'] }}</button>
+      <button class="btn" data-variant="secondary" name="how" value="ai">{{ icon('sparkles') }}{{ t['item.import.ai'] }}</button>
+      <span class="ka-muted" id="import-busy" hidden>{{ t['item.import.busy'] }}</span>
+    </div>
+  </form>
+  <script>
+  document.getElementById('import-form').addEventListener('submit', (e) => {
+    if (e.submitter && e.submitter.value === 'ai') document.getElementById('import-busy').hidden = false;
+    e.target.querySelectorAll('button').forEach((b) => { setTimeout(() => { b.disabled = true; }); });
+  });
+  </script>
+  {% endif %}
+  <div class="ka-bar">
+    <form class="ka-inline" method="post" action="{{ base }}/template"><button class="btn" data-variant="outline">{{ t['item.template'] }}</button></form>
+  </div>
+  <form method="post" action="{{ base }}/trash" onsubmit="return confirm('{{ t['trash.confirm'] }}')" class="ka-trash">
+  <button class="btn" data-variant="destructive" data-size="sm"{% if vm.status in ('online', 'reserved') %} disabled{% endif %}>{{ t['trash.button'] }}</button>
+  <span class="ka-muted">{{ t['trash.hint'] }}</span>
+</form>
+</section></div>
+{% else %}
+
+<form id="f-approve-changes" method="post" action="{{ base }}/approve-changes" hidden></form>
+<form id="f-run" method="post" action="{{ base }}/run" hidden></form>
+{% for a in ['reserve', 'activate', 'sold', 'withdraw'] %}<form id="f-{{ a }}" method="post" action="{{ base }}/action" hidden><input type="hidden" name="what" value="{{ a }}"></form>{% endfor %}
+<form id="f-upload" method="post" action="{{ base }}/photos" enctype="multipart/form-data" hidden></form>
+<form id="f-prices" method="post" action="{{ base }}/prices" hidden></form>
+
+<form id="listing-form" method="post" action="{{ base }}" class="ka-cols" data-confirm-text="{{ t['confirm'] }}" data-unsaved-text="{{ t['tb.unsaved'] }}">
+<input type="hidden" name="approved" id="approved" value="{{ 'on' if vm.form.approved else '' }}">
+<div class="ka-stack">
+  <div class="card"><header><h2 class="card-title">{{ t['sec.ad'] }}</h2></header><section class="ka-stack">
+    <div class="field" role="group">
+      <div class="ka-labelrow"><label for="f-title">{{ t['f.title'] }}</label><button type="button" class="btn ka-aiicon" data-variant="ghost" data-size="sm" data-ai="titles" title="{{ t['ai.titles'] }}" aria-label="{{ t['ai.titles'] }}"><svg data-icon-lu="sparkles" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg></button></div>
+      <input class="input" type="text" id="f-title" name="title" value="{{ vm.form.title }}">
+      <p>{{ t['h.title'] }}</p>
+    </div>
+    <div class="field" role="group">
+      <div class="ka-labelrow"><label for="f-description">{{ t['f.description'] }}</label><button type="button" class="btn ka-aiicon" data-variant="ghost" data-size="sm" data-ai="text" title="{{ t['ai.text'] }}" aria-label="{{ t['ai.text'] }}"><svg data-icon-lu="sparkles" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg></button></div>
+      <textarea class="textarea" id="f-description" name="description" rows="12">{{ vm.form.description }}</textarea>
+      <p>{{ t['h.description'] }}</p>
+    </div>
+    <div class="field" role="group" id="facts"><label>{{ t['f.facts'] }}</label>
+      <div class="ka-facts">
+        <span class="ka-muted ka-facts-head"></span><span class="ka-muted ka-facts-head"></span><span class="ka-muted ka-facts-head">{{ t['f.facts.show'] }}</span>
+        <label for="f-condition">{{ t['f.condition'] }}</label>
+        <select class="select" id="f-condition" name="facts.condition"><option value="">–</option>
+          {% for c in vm.conditions %}<option value="{{ c.key }}" data-text="{{ c.text }}"{% if vm.form['facts.condition'] == c.key %} selected{% endif %}>{{ t['cond.' ~ c.key] }}</option>{% endfor %}</select>
+        <input class="input" type="checkbox" name="facts.condition.show" data-fact-show aria-label="{{ t['f.facts.show'] }}"{% if vm.form['facts.condition.show'] %} checked{% endif %}>
+        {% for key, extra in [('purchase_price', ''), ('market_new', ''), ('market_used', 'median')] %}
+        <label for="f-{{ key }}">{{ t['f.' ~ key] }}</label>
+        <div class="ka-bar ka-nowrap">
+          <input class="input" type="number" step="any" id="f-{{ key }}" name="facts.{{ key }}" value="{{ vm.form['facts.' ~ key] }}" data-fact-line="{{ t['line.' ~ key] }}">
+          {% if extra == 'median' and vm.last_median %}<button type="button" class="btn" data-variant="outline" data-size="sm" data-copy-to="f-market_used" data-value="{{ vm.last_median }}" title="{{ t['f.median.take'] }}">{{ vm.last_median }} €</button>{% endif %}
+        </div>
+        <input class="input" type="checkbox" name="facts.{{ key }}.show" data-fact-show aria-label="{{ t['f.facts.show'] }}"{% if vm.form['facts.' ~ key ~ '.show'] %} checked{% endif %}>
+        {% endfor %}
+        {% for x in vm.extra_facts %}
+        <input class="input" name="fx.label" value="{{ x.label }}" placeholder="{{ t['f.facts.label'] }}" aria-label="{{ t['f.facts.label'] }}">
+        <input class="input" name="fx.value" value="{{ x.value }}" placeholder="{{ t['f.facts.value'] }}" aria-label="{{ t['f.facts.value'] }}" data-fact-extra>
+        <input class="input" type="checkbox" name="fx.show" value="{{ loop.index0 }}" data-fact-show aria-label="{{ t['f.facts.show'] }}"{% if x.show %} checked{% endif %}>
+        {% endfor %}
+      </div>
+      <p>{{ t['h.facts'] }}</p>
+    </div>
+    <div class="field" role="group"><label>{{ t['f.texts'] }}</label>
+      <div class="ka-checks">{% for b in vm.texts %}<label title="{{ b.text }}"><input class="input" type="checkbox" name="texts" value="{{ b.key }}"{% if b.checked %} checked{% endif %}> {{ b.key }}</label>{% endfor %}</div>
+      <p>{{ t['h.texts'] }}</p>
+      <div class="ka-blocks-preview" aria-label="{{ t['pv.texts'] }}">
+        <div class="ka-block-text" id="facts-preview" hidden></div>
+        {% for b in vm.texts %}<div class="ka-block-text" data-block="{{ b.key }}"{% if not b.checked %} hidden{% endif %}>{{ b.text }}</div>{% endfor %}
+      </div>
+    </div>
+    <div class="field" role="group"><div class="ka-labelrow"><label>{{ t['f.category'] }}</label><button type="button" class="btn ka-aiicon" data-variant="ghost" data-size="sm" data-ai="categories" title="{{ t['ai.categories'] }}" aria-label="{{ t['ai.categories'] }}"><svg data-icon-lu="sparkles" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg></button></div>
+      <div class="ka-cat" id="cat" data-this="{{ t['cat.this'] }}" data-none="{{ t['cat.none'] }}" data-choose="{{ t['cat.choose'] }}">
+        <input type="hidden" name="category" value="{{ vm.form.category }}">
+        <button type="button" class="btn ka-cat-button" data-variant="outline">{{ vm.form.category or t['cat.choose'] }}</button>
+        <div class="ka-cat-panel" hidden>
+          <input class="input" type="search" placeholder="{{ t['cat.search'] }}" autocomplete="off">
+          <div class="ka-cat-body"></div>
+        </div>
+      </div>
+      <p>{{ t['h.category'] }}</p>
+    </div>
+    <script type="application/json" id="cat-data">{{ vm.categories|tojson }}</script>
+    <div class="field" role="group"><label for="f-seller">{{ t['f.seller'] }}</label>
+      <select class="select" id="f-seller" name="seller"><option value="">{{ t['opt.default'] }}{% if vm.default_seller %} ({{ vm.default_seller }}){% endif %}</option>
+        {% for s in vm.sellers %}<option value="{{ s }}"{% if vm.form.seller == s %} selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+      <p>{{ t['h.seller'] }}</p></div>
+  </section></div>
+
+  <div class="card"><header><h2 class="card-title">{{ t['sec.pricing'] }}</h2></header><section class="ka-stack">
+    <div class="ka-grid">
+      {{ text('pricing.start', 'f.start', 'h.start', type='number') }}
+      {{ text('pricing.reduce_to', 'f.reduce_to', 'h.reduce_to', type='number') }}
+      {{ text('pricing.min_sale', 'f.min_sale', 'h.min_sale', type='number') }}
+      <div class="field" role="group"><label for="f-type">{{ t['f.type'] }}</label>
+        <select class="select" id="f-type" name="pricing.type"><option value="">{{ t['opt.default'] }}</option>
+          {% for v in ['NEGOTIABLE', 'FIXED', 'GIVE_AWAY'] %}<option value="{{ v }}"{% if vm.form['pricing.type'] == v %} selected{% endif %}>{{ t['type.' ~ v] }}</option>{% endfor %}</select>
+        <p>{{ t['h.type'] }}</p></div>
+      {{ text('pricing.schedule.hold_days', 'f.hold_days', 'h.hold_days', type='number') }}
+      {{ text('pricing.schedule.every_days', 'f.every_days', 'h.every_days', type='number') }}
+      <div class="field" role="group">
+        <label class="ka-checks"><input class="input" type="checkbox" role="switch" name="fixed_step" id="fixed-step"{% if vm.form.fixed_step %} checked{% endif %}> {{ t['f.fixed_step'] }}</label>
+        <p>{{ t['h.fixed_step'] }}</p></div>
+      <div data-step-mode="equal">{{ text('pricing.schedule.steps', 'f.steps', 'h.steps', type='number') }}</div>
+      <div data-step-mode="fixed">{{ text('pricing.schedule.step', 'f.step', 'h.step') }}</div>
+    </div>
+    <div class="ka-plan">
+      <b>{{ t['pv.title'] }}</b>
+      {% if vm.plan|length > 1 %}
+      <ol>{% for s in vm.plan %}<li><span>{{ s.price }} €</span> <span class="ka-muted">{% if loop.first %}{{ t['pv.today'] }} ({{ s.day.strftime('%d.%m.') }}){% else %}{{ t['pv.from'] }} {{ s.day.strftime('%d.%m.%Y') }}{% endif %}{% if s.last %} · {{ t['pv.end'] }}{% endif %}</span></li>{% endfor %}</ol>
+      {% else %}<span class="ka-muted">{{ t['pv.none'] }}</span>{% endif %}
+    </div>
+  </section></div>
+
+  <div class="card"><header><h2 class="card-title">{{ t['sec.availability'] }}</h2></header><section class="ka-grid">
+    {{ text('availability.from', 'f.from', 'h.from', type='date') }}
+    {{ text('availability.until', 'f.until', 'h.until', type='date') }}
+  </section></div>
+
+  <div class="card"><header><h2 class="card-title">{{ t['sec.place'] }}</h2><p class="card-description">{{ t['h.place'] }}</p></header><section class="ka-grid">
+    {{ text('location.zipcode', 'f.zipcode') }}
+    {{ text('location.city', 'f.city') }}
+    {{ tri('shipping.enabled', 'f.shipping', 'h.shipping') }}
+    {{ text('shipping.cost', 'f.cost', 'h.cost', type='number') }}
+  </section></div>
+
+  <div class="card"><header><h2 class="card-title">{{ t['sec.republish'] }}</h2><p class="card-description">{{ t['h.republish'] }}</p></header><section class="ka-grid">
+    {{ tri('republish.enabled', 'f.republish') }}
+    {{ text('republish.after_days', 'f.after_days', 'h.after_days', type='number') }}
+    {{ text('republish.max', 'f.max', 'h.max', type='number') }}
+  </section></div>
+
+  <div class="card"><header><h2 class="card-title">{{ t['sec.more'] }}</h2></header><section class="ka-grid">
+    {{ text('price_check.query', 'f.query', 'h.query') }}
+    {{ text('price_check.exclude', 'f.exclude', 'h.exclude') }}
+    <div class="field" role="group"><label for="f-attributes">{{ t['f.attributes'] }}</label>
+      <textarea class="textarea" id="f-attributes" name="attributes" rows="3">{{ vm.form.attributes }}</textarea><p>{{ t['h.attributes'] }}</p></div>
+  </section></div>
+</div>
+
+<div class="ka-stack ka-side">
+  <div class="card"><header><h2 class="card-title">{{ t['item.photos'] }}</h2><p class="card-description">{{ t['ph.drag'] }}</p></header><section class="ka-stack">
+    <div class="ka-photos" id="photos">{% for p in vm.photos %}
+      <figure class="ka-photo"{% if p.skipped %} data-skipped{% endif %}{% if p.cover %} data-cover{% endif %} data-full="{{ p.url }}" data-name="{{ p.name }}">
+        <img src="{{ p.thumb }}" alt="{{ p.name }}" loading="lazy" draggable="false">
+        <input type="hidden" name="photos.order" value="{{ p.name }}">
+        <input type="checkbox" name="photos.skip" value="{{ p.name }}" hidden{% if p.skipped %} checked{% endif %}>
+        <span class="badge ka-cover" data-variant="info">{{ t['ph.cover'] }}</span>
+        <span class="badge ka-off" data-variant="muted">{{ t['ph.skipped'] }}</span>
+      </figure>{% endfor %}
+    </div>
+  </section>
+  <footer class="ka-photo-footer">
+      <button type="button" class="btn ka-photobtn" data-variant="outline" data-size="sm" id="cam-open" title="{{ t['cam.open'] }}" aria-label="{{ t['cam.open'] }}">
+        <svg data-icon-lu="camera" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/></svg>
+      </button>
+      <label class="btn ka-photobtn" data-variant="outline" data-size="sm" title="{{ t['item.upload'] }}" aria-label="{{ t['item.upload'] }}">
+        <svg data-icon-lu="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        <input type="file" name="files" accept="image/*" multiple form="f-upload" hidden onchange="this.form.submit()">
+      </label>
+  </footer></div>
+
+  <div class="card"><header><h2 class="card-title">{{ t['sec.market'] }}</h2></header><section class="ka-stack">
+    {% if vm.market %}
+    <table class="table">
+      <thead><tr><th>{{ t['m.when'] }}</th><th class="text-end">min</th><th class="text-end">median</th><th class="text-end">max</th></tr></thead>
+      <tbody>{% for m in vm.market %}
+        <tr><td>{{ m.at }}<div class="ka-muted">{{ m.used }}/{{ m.offers }} {{ t['m.offers'] }}</div></td>
+          <td class="text-end">{{ m.min if m.min is defined else '–' }}</td><td class="text-end">{{ m.median if m.median is defined else '–' }}</td><td class="text-end">{{ m.max if m.max is defined else '–' }}</td></tr>
+        {% if m.ai %}<tr><td class="ka-muted">{{ t['m.ai'] }} ({{ m.ai.comparable }})</td><td class="text-end">{{ m.ai.min or '–' }}</td><td class="text-end">{{ m.ai.median or '–' }}</td><td class="text-end">{{ m.ai.max or '–' }}</td></tr>{% endif %}
+      {% endfor %}</tbody></table>
+    {% set ai = vm.market[0].ai if vm.market[0].ai is defined else None %}
+    {% if ai and ai.suggestion %}<p><b>{{ t['m.suggestion'] }}:</b> {{ ai.suggestion.start }} → {{ ai.suggestion.reduce_to }} € · min {{ ai.suggestion.min_sale }} €</p>{% endif %}
+    {% if ai and ai.note %}<p class="ka-muted">{{ ai.note }}</p>{% endif %}
+    {% else %}<p class="ka-muted">{{ t['m.none'] }}</p>{% endif %}
+    <div class="ka-bar">
+      <label class="ka-checks"><input class="input" type="checkbox" name="ai" form="f-prices"> {{ t['f.ai'] }}</label>
+      <button class="btn" data-variant="secondary" data-size="sm" form="f-prices" data-guard>{{ t['tb.prices'] }}</button>
+    </div>
+  </section></div>
+</div>
+</form>
+
+<form method="post" action="{{ base }}/trash" onsubmit="return confirm('{{ t['trash.confirm'] }}')" class="ka-trash">
+  <button class="btn" data-variant="destructive" data-size="sm"{% if vm.status in ('online', 'reserved') %} disabled{% endif %}>{{ t['trash.button'] }}</button>
+  <span class="ka-muted">{{ t['trash.hint'] }}</span>
+</form>
+
+<dialog id="photo" class="dialog ka-photo-dialog" aria-labelledby="photo-title" data-key="{{ vm.key }}">
+  <div class="ka-crop-box">
+    <header><h2 id="photo-title">{{ t['ph.view'] }}</h2><p>{{ t['crop.hint'] }}</p></header>
+    <section class="ka-crop-section">
+      <div class="ka-bar">
+        <button type="button" class="btn" data-variant="outline" data-size="sm" data-rotate="-90">{{ t['crop.rotate_l'] }}</button>
+        <button type="button" class="btn" data-variant="outline" data-size="sm" data-rotate="90">{{ t['crop.rotate_r'] }}</button>
+        <select class="select" data-size="sm" id="crop-aspect">
+          <option value="0">{{ t['crop.free'] }}</option><option value="1.3333">4:3</option><option value="1">1:1</option><option value="0.75">3:4</option>
+        </select>
+        <span class="ka-grow"></span>
+        <button type="button" class="btn" data-variant="outline" data-size="sm" id="photo-cover">{{ t['ph.make_cover'] }}</button>
+        <button type="button" class="btn" data-variant="outline" data-size="sm" id="photo-skip" data-on="{{ t['ph.skip'] }}" data-off="{{ t['ph.use'] }}">{{ t['ph.skip'] }}</button>
+      </div>
+      <div class="ka-crop-stage"><canvas id="crop-canvas" class="ka-crop-canvas"></canvas></div>
+    </section>
+    <footer>
+      <button type="button" class="btn" data-variant="outline" onclick="this.closest('dialog').close()">{{ t['ph.close'] }}</button>
+      <button type="button" class="btn" id="crop-save">{{ t['ph.save_crop'] }}</button>
+    </footer>
+  </div>
+</dialog>
+<dialog id="ai-dialog" class="dialog" aria-labelledby="ai-title" data-key="{{ vm.key }}"
+        data-working="{{ t['ai.working'] }}" data-use="{{ t['ai.use'] }}"
+        data-t-text="{{ t['ai.title.text'] }}" data-t-titles="{{ t['ai.title.titles'] }}" data-t-categories="{{ t['ai.title.categories'] }}"
+        onclick="if (event.target === this) this.close()">
+  <div class="ka-ai-box">
+    <header><h2 id="ai-title"></h2><p>{{ t['ai.note'] }}</p></header>
+    <section class="ka-stack" id="ai-body"></section>
+    <footer><button type="button" class="btn" data-variant="outline" onclick="this.closest('dialog').close()">{{ t['ph.close'] }}</button></footer>
+  </div>
+</dialog>
+<dialog id="cam" class="dialog ka-photo-dialog" aria-labelledby="cam-title" data-key="{{ vm.key }}" data-denied="{{ t['cam.denied'] }}">
+  <div class="ka-crop-box">
+    <header><h2 id="cam-title">{{ t['cam.title'] }}</h2><p>{{ t['cam.hint'] }}</p></header>
+    <section class="ka-crop-section">
+      <div class="ka-bar">
+        <select class="select" data-size="sm" id="cam-device"></select>
+        <span class="ka-grow"></span><span class="ka-muted" id="cam-count"></span>
+      </div>
+      <div class="ka-crop-stage"><video id="cam-video" autoplay playsinline muted class="ka-cam-video"></video>
+        <canvas id="cam-shot" class="ka-cam-video" hidden></canvas></div>
+    </section>
+    <footer>
+      <button type="button" class="btn" data-variant="outline" id="cam-close">{{ t['ph.close'] }}</button>
+      <button type="button" class="btn" data-variant="outline" id="cam-retake" hidden>{{ t['cam.retake'] }}</button>
+      <button type="button" class="btn" id="cam-take">{{ t['cam.take'] }}</button>
+      <button type="button" class="btn" id="cam-use" hidden>{{ t['cam.use'] }}</button>
+    </footer>
+  </div>
+</dialog>
+<script src="/static/item.js?v={{ v }}" defer></script>
+{% endif %}
+{% endblock %}

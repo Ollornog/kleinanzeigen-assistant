@@ -1,0 +1,57 @@
+[project]
+name = "kleinanzeigen-assistant"
+version = "0.1.0"
+description = "Local assistant for one private Kleinanzeigen account: ads from folders, price schedule, inbox with AI reply drafts. Built on kleinanzeigen-bot."
+readme = "README.md"
+requires-python = ">=3.13"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+authors = [{ name = "Ollornog", email = "admin@ollornog.de" }]
+keywords = ["kleinanzeigen", "classifieds", "assistant", "fastapi", "kleinanzeigen-bot"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Web Environment",
+  "Intended Audience :: End Users/Desktop",
+  "Natural Language :: English",
+  "Natural Language :: German",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+]
+dependencies = [
+  # pinned commit (tag "latest" of 2026-11-14); raise only after reading the diff
+  "kleinanzeigen-bot @ git+https://github.com/Second-Hand-Friends/kleinanzeigen-bot@2687db605f1b6d1aae5b11320deb6a3667bd9aaa",
+  "pyyaml>=6.0.4",
+  "fastapi>=0.165.0",
+  "uvicorn>=0.54.0",
+  "jinja2>=3.1.6",
+  "python-multipart>=0.0.34",
+  "pillow>=13.0.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=9.2.0", "httpx2>=2.16.2"]
+
+[project.urls]
+Homepage = "https://github.com/Ollornog/kleinanzeigen-assistant"
+Issues = "https://github.com/Ollornog/kleinanzeigen-assistant/issues"
+Changelog = "https://github.com/Ollornog/kleinanzeigen-assistant/blob/main/CHANGELOG.md"
+
+[project.scripts]
+kassist = "kassist.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kassist"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

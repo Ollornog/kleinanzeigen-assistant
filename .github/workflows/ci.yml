@@ -1,0 +1,63 @@
+name: CI
+
+# Feature branches run without CI on purpose (scripts/check.sh and the pre-push hook are the net
+# there); the gate is pull requests and main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Never cancel on main: a cancelled main run leaves the commit without its required check.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  tests:
+    # Public repository: GitHub-hosted runners only (a fork PR must not run on own hardware).
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # The last three stable minors, kept in repokit (tests/_kit/python_matrix.json).
+        python: ["3.13", "3.14", "3.15"]
+
+    steps:
+      # `persist-credentials: false`: own hardening. Nothing here pushes through git credentials,
+      # and third-party package code runs after the checkout.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+
+      # uv builds the throw-away venv in scripts/check.sh. The uv version is an input, which
+      # Dependabot does not raise: bump it together with the action.
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d  # v10.4.0
+        with:
+          version: "0.13.9"
+          enable-cache: false
+
+      # Taken after setup so that the residue check below blames only the suite.
+      - name: Tree before the suite
+        run: ./scripts/_residue_check.sh snapshot > "$RUNNER_TEMP/tree-before.txt"
+
+      - name: Suite (hygiene, unit tests, packaging smoke test)
+        env:
+          PYTHON: ${{ matrix.python }}
+        run: ./scripts/check.sh
+
+      - name: Repeatable - the same suite a second time
+        env:
+          PYTHON: ${{ matrix.python }}
+        run: ./scripts/check.sh
+
+      - name: Working tree unchanged
+        run: ./scripts/_residue_check.sh check --seit "$RUNNER_TEMP/tree-before.txt"
