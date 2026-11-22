@@ -2,7 +2,7 @@
 id: M-1
 type: Milestone
 title: First public release (v0.1.0)
-status: in-arbeit
+status: erledigt
 tags: [release, repo]
 created: 2026-11-22
 ---
@@ -22,3 +22,7 @@ kassist has been running against one real account; this milestone makes the repo
   into a fresh venv and started (`kassist --help`).
 
 The tasks for field-testing open points (T-2, T-3) belong to M-2.
+
+**Result (2026-11-22):** repository public, CI and audit green on Python 3.13/3.14/3.15, branch
+protection on `main`, release v0.1.0 with wheel, sdist and `SHA256SUMS`; the released wheel was
+installed into a fresh venv, checksums verified and `kassist --help` started.

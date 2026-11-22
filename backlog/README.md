@@ -7,7 +7,7 @@ Konventionen: [README-KONVENTION.md](README-KONVENTION.md).
 
 ## Meilensteine
 
-* ◐ **[M-1](M-1-first-public-release.md)** First public release (v0.1.0) — noch keine Aufgaben
+* ☑ **[M-1](M-1-first-public-release.md)** First public release (v0.1.0) — noch keine Aufgaben
 * ☐ **[M-2](M-2-field-tested.md)** Field-tested with real conversations and devices — 0/4 erledigt
 
 ## Aufgaben
