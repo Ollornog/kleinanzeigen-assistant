@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Vendored C22 (`js/c22.js`): a `data-href` on an explorer row or merged cell opens only a target on the GUI's own
+  origin; a `javascript:` target ran as script on a double click (CodeQL `js/xss-through-dom`). Only this change of
+  C22 PR #160 is applied, noted in `ORIGIN`. Test `tests/test_c22_vendor.py` runs the guard in node.
+
 ## [0.1.0] - 2026-11-22
 
 First public release.

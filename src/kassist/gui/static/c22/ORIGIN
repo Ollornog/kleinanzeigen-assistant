@@ -8,4 +8,7 @@ Fetched: 2026-11-22 by scripts/vendor-c22.sh
 Contains: css/c22.css (pack), js/basecoat.all.min.js, js/c22.js, js/icons.js (Phosphor, MIT), fonts/inter.woff2
 (Inter, SIL Open Font License 1.1 - licence text in fonts/OFL.txt). C22 itself: MIT.
 
+Plus, applied by hand until the next vendor run: C22 PR #160 (js/c22.js: data-href opens only same-origin
+targets, window.C22.safeHref). The next vendor run from a C22 commit that contains it replaces this note.
+
 Changes to the look belong in C22, not here: a fix in this copy is gone after the next vendor run.
