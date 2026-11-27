@@ -1,0 +1,8 @@
+{
+  "_comment": "Unused-dependency check of the kit (scripts/_abhaengigkeiten.py). Every entry needs a reason.",
+  "allow": {
+    "pyproject.toml": {
+      "kleinanzeigen-bot": "run as a CLI by src/kassist/bot.py (subprocess), never imported; it also brings nodriver"
+    }
+  }
+}

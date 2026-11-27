@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- CI: kit 0.73.0 checks unused dependencies in `scripts/check.sh`; `kleinanzeigen-bot` (run as a CLI, never imported)
+  is allowed with a reason in `.github/abhaengigkeiten.json`.
+
 ### Security
 
 - Vendored C22 (`js/c22.js`): a `data-href` on an explorer row or merged cell opens only a target on the GUI's own
